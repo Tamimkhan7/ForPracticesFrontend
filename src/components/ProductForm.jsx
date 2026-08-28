@@ -23,7 +23,8 @@ function ProductForm({ onProductCreated }) {
     setError(null);
 
     try {
-      const payload = {
+    
+     const payload = {
         ...formData,
         productPrice: Number(formData.productPrice),
         productQuantity: Number(formData.productQuantity),
@@ -62,7 +63,7 @@ function ProductForm({ onProductCreated }) {
         </label>
         <input
           type="text"
-          name="productName"
+          name="productName" 
           value={formData.productName}
           onChange={handleChange}
           required

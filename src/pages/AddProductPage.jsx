@@ -26,5 +26,6 @@ function AddProductPage() {
     </div>
   );
 }
+// onProductCreated(response.data)
 
 export default AddProductPage;

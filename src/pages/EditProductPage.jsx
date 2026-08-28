@@ -19,7 +19,7 @@ function EditProductPage() {
     const fetchProduct = async () => {
       try {
         const response = await getProducts();
-        const product = response.data.find((p) => p.id === Number(id));
+        const product = response.data.find((p) => p.id === Number(id));      
 
         if (!product) {
           setError('Product not found.');
