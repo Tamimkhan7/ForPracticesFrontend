@@ -16,8 +16,7 @@ function ForgotPasswordPage() {
 
     try {
       await forgotPassword(email);
-      // Backend always returns a generic success message, whether or not
-      // the email exists, so we don't leak account existence here either.
+ 
       setSent(true);
     } catch (err) {
       setError(getErrorMessage(err, "Could not send reset email. Please try again."));

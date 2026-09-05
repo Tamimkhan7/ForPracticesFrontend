@@ -15,13 +15,11 @@ function App() {
       <Navbar />
 
       <Routes>
-        {/* Public auth routes */}
         <Route path='/login' element={<LoginPage />} />
         <Route path='/register' element={<RegisterPage />} />
         <Route path='/forgot-password' element={<ForgotPasswordPage />} />
         <Route path='/reset-password' element={<ResetPasswordPage />} />
 
-        {/* Protected routes - must be logged in */}
         <Route element={<ProtectedRoute />}>
           <Route path='/' element={<ProductListPage />} />
           <Route path='/add-product' element={<AddProductPage />} />

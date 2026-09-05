@@ -10,7 +10,6 @@ const axiosInstance = axios.create({
   },
 });
 
-// Attach the access token to every outgoing request (if we have one)
 axiosInstance.interceptors.request.use((config) => {
   const token = localStorage.getItem("accessToken");
   if (token) {
@@ -19,8 +18,7 @@ axiosInstance.interceptors.request.use((config) => {
   return config;
 });
 
-// Auto-refresh: if a request fails with 401, try refresh-token once,
-// then retry the original request. If refresh also fails, force logout.
+
 let isRefreshing = false;
 let pendingQueue = [];
 
@@ -44,7 +42,6 @@ axiosInstance.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
-        // Another request already triggered a refresh — wait for it
         return new Promise((resolve, reject) => {
           pendingQueue.push({ resolve, reject });
         }).then((newToken) => {
