@@ -112,7 +112,7 @@ function ProductForm({ onProductCreated }) {
         </div>
       </div>
 
-      <div className="mb-6">
+      {/* <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-1">
           User ID
         </label>
@@ -124,7 +124,7 @@ function ProductForm({ onProductCreated }) {
           required
           className="border border-gray-300 p-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-      </div>
+      </div> */}
 
       <button
         type="submit"

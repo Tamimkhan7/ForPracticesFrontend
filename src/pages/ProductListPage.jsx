@@ -8,11 +8,22 @@ function ProductListPage() {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
   useEffect(() => {
     const fetchProducts = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const response = await getProducts();
-        setProducts(response.data);
+        const response = await getProducts(pageNumber, pageSize);
+        const data = response.data;
+
+        setProducts(data.items ?? []);
+        setTotalPages(data.totalPages ?? 1);
+        setTotalCount(data.totalCount ?? 0);
       } catch (err) {
         setError('Could not load products. Is the backend running?');
         console.error(err);
@@ -22,7 +33,7 @@ function ProductListPage() {
     };
 
     fetchProducts();
-  }, []);
+  }, [pageNumber, pageSize]);
 
   const handleDelete = async (id) => {
     const confirmed = window.confirm('Are you sure you want to delete this product?');
@@ -30,11 +41,27 @@ function ProductListPage() {
 
     try {
       await deleteProduct(id);
-      setProducts((prev) => prev.filter((p) => p.id !== id));
+     
+      setProducts((prev) => {
+        const updated = prev.filter((p) => p.id !== id);
+        if (updated.length === 0 && pageNumber > 1) {
+          setPageNumber((p) => p - 1);
+        }
+        return updated;
+      });
+      setTotalCount((prev) => Math.max(prev - 1, 0));
     } catch (err) {
       alert('Could not delete product.');
       console.error(err);
     }
+  };
+
+  const handlePrev = () => {
+    setPageNumber((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleNext = () => {
+    setPageNumber((prev) => Math.min(prev + 1, totalPages));
   };
 
   return (
@@ -49,7 +76,8 @@ function ProductListPage() {
         </button>
       </div>
       <p className="text-sm text-gray-500 mb-6">
-        All products currently in inventory.
+        All products currently in inventory
+        {totalCount > 0 && ` (${totalCount} total)`}.
       </p>
 
       {loading && <p className="text-gray-500">Loading products...</p>}
@@ -66,43 +94,65 @@ function ProductListPage() {
       )}
 
       {!loading && !error && products.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {products.map((product) => (
-            <div
-              key={product.id}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col"
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {products.map((product) => (
+              <div
+                key={product.id}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col"
+              >
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {product.productName}
+                </h2>
+                <p className="text-gray-500 text-sm mt-1 mb-3 flex-grow">
+                  {product.productDescription}
+                </p>
+
+                <div className="flex justify-between text-sm mb-4">
+                  <span className="font-medium text-gray-900">
+                    ৳{product.productPrice}
+                  </span>
+                  <span className="text-gray-500">Qty: {product.productQuantity}</span>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => navigate(`/edit-product/${product.id}`)}
+                    className="flex-1 text-sm font-medium bg-gray-100 text-gray-700 px-3 py-1.5 rounded-md hover:bg-gray-200"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(product.id)}
+                    className="flex-1 text-sm font-medium bg-red-50 text-red-600 px-3 py-1.5 rounded-md hover:bg-red-100"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-center items-center gap-4 mt-8">
+            <button
+              onClick={handlePrev}
+              disabled={pageNumber <= 1}
+              className="text-sm font-medium bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <h2 className="text-lg font-semibold text-gray-900">
-                {product.productName}
-              </h2>
-              <p className="text-gray-500 text-sm mt-1 mb-3 flex-grow">
-                {product.productDescription}
-              </p>
-
-              <div className="flex justify-between text-sm mb-4">
-                <span className="font-medium text-gray-900">
-                  ৳{product.productPrice}
-                </span>
-                <span className="text-gray-500">Qty: {product.productQuantity}</span>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => navigate(`/edit-product/${product.id}`)}
-                  className="flex-1 text-sm font-medium bg-gray-100 text-gray-700 px-3 py-1.5 rounded-md hover:bg-gray-200"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(product.id)}
-                  className="flex-1 text-sm font-medium bg-red-50 text-red-600 px-3 py-1.5 rounded-md hover:bg-red-100"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+              Prev
+            </button>
+            <span className="text-sm text-gray-600">
+              Page {pageNumber} of {totalPages}
+            </span>
+            <button
+              onClick={handleNext}
+              disabled={pageNumber >= totalPages}
+              className="text-sm font-medium bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
