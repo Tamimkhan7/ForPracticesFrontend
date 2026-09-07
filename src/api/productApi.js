@@ -1,8 +1,8 @@
 import axiosInstance from './axiosInstance';
 
-export const getProducts = (pageNumber = 1, pageSize = 10) =>
+export const getProducts = (pageNumber, pageSize, searchValue, minValue, maxValue) =>
   axiosInstance.get('/Product', {
-    params: { pageNumber, pageSize },
+    params: { pageNumber, pageSize, searchValue, minValue, maxValue },
   });
 
 export const createProduct = (data) => axiosInstance.post('/Product', data);

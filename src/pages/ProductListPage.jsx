@@ -9,16 +9,60 @@ function ProductListPage() {
   const navigate = useNavigate();
 
   const [pageNumber, setPageNumber] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(12);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+
+  const [searchValue, setSearchValue] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  const [minValue, setMinValue] = useState("");
+  const [maxValue, setMaxValue] = useState("");
+
+  const [debouncedMin, setDebouncedMin] = useState("");
+  const [debouncedMax, setDebouncedMax] = useState("");
+  const [priceError, setPriceError] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchValue);
+      setPageNumber(1); 
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [searchValue]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (
+        minValue !== "" &&
+        maxValue !== "" &&
+        Number(minValue) > Number(maxValue)
+      ) {
+        setPriceError("Min price can't be greater than max price.");
+        return;
+      }
+      setPriceError("");
+      setDebouncedMin(minValue);
+      setDebouncedMax(maxValue);
+      setPageNumber(1); 
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [minValue, maxValue]);
 
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await getProducts(pageNumber, pageSize);
+        const response = await getProducts(
+          pageNumber,
+          pageSize,
+          debouncedSearch,
+          debouncedMin === "" ? undefined : debouncedMin,
+          debouncedMax === "" ? undefined : debouncedMax
+        );
         const data = response.data;
 
         setProducts(data.items ?? []);
@@ -33,7 +77,7 @@ function ProductListPage() {
     };
 
     fetchProducts();
-  }, [pageNumber, pageSize]);
+  }, [pageNumber, pageSize, debouncedSearch, debouncedMin, debouncedMax]);
 
   const handleDelete = async (id) => {
     const confirmed = window.confirm('Are you sure you want to delete this product?');
@@ -41,7 +85,7 @@ function ProductListPage() {
 
     try {
       await deleteProduct(id);
-     
+
       setProducts((prev) => {
         const updated = prev.filter((p) => p.id !== id);
         if (updated.length === 0 && pageNumber > 1) {
@@ -64,6 +108,15 @@ function ProductListPage() {
     setPageNumber((prev) => Math.min(prev + 1, totalPages));
   };
 
+  const handleClearSearch = () => {
+    setSearchValue("");
+  };
+
+  const handleClearPriceFilter = () => {
+    setMinValue("");
+    setMaxValue("");
+  };
+
   return (
     <div className="max-w-5xl mx-auto p-6">
       <div className="flex justify-between items-center mb-1">
@@ -75,10 +128,81 @@ function ProductListPage() {
           + Add Product
         </button>
       </div>
-      <p className="text-sm text-gray-500 mb-6">
+      <p className="text-sm text-gray-500 mb-4">
         All products currently in inventory
         {totalCount > 0 && ` (${totalCount} total)`}.
       </p>
+
+      <div className="relative mb-3">
+        <svg
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"
+          />
+        </svg>
+        <input
+          type="text"
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          placeholder="Search products by name..."
+          className="w-full pl-10 pr-10 py-2.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        {searchValue && (
+          <button
+            onClick={handleClearSearch}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            aria-label="Clear search"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 mb-2">
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-600">TK</label>
+          <input
+            type="number"
+            min="0"
+            value={minValue}
+            onChange={(e) => setMinValue(e.target.value)}
+            placeholder="Min price"
+            className="w-28 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        <span className="text-gray-400 text-sm">to</span>
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-600">TK</label>
+          <input
+            type="number"
+            min="0"
+            value={maxValue}
+            onChange={(e) => setMaxValue(e.target.value)}
+            placeholder="Max price"
+            className="w-28 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        {(minValue || maxValue) && (
+          <button
+            onClick={handleClearPriceFilter}
+            className="text-sm text-gray-500 hover:text-gray-700 underline"
+          >
+            Clear price filter
+          </button>
+        )}
+      </div>
+      {priceError && (
+        <p className="text-sm text-red-600 mb-2">{priceError}</p>
+      )}
+
+      <div className="mb-6" />
 
       {loading && <p className="text-gray-500">Loading products...</p>}
       {error && (
@@ -89,7 +213,9 @@ function ProductListPage() {
 
       {!loading && !error && products.length === 0 && (
         <div className="text-center text-gray-500 bg-white rounded-xl border border-dashed border-gray-300 p-10">
-          No products yet. Click "+ Add Product" to create one.
+          {debouncedSearch || debouncedMin || debouncedMax
+            ? 'No products match the current filters.'
+            : 'No products yet. Click "+ Add Product" to create one.'}
         </div>
       )}
 
