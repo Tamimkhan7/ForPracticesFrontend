@@ -1,5 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createProduct } from '../api/productApi';
+import FileThumbnail from './FileThumbnail';
+import { ACCEPTED_FILE_TYPES } from '../utils/fileHelpers';
+
+const MAX_FILE_SIZE_MB = 5;
 
 function ProductForm({ onProductCreated }) {
   const [formData, setFormData] = useState({
@@ -7,28 +11,62 @@ function ProductForm({ onProductCreated }) {
     productDescription: '',
     productPrice: '',
     productQuantity: '',
-    userId: '',
   });
+  const [file, setFile] = useState(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState(null);
+  const [fileError, setFileError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  // Avoid leaking object URLs created for local previews
+  useEffect(() => {
+    return () => {
+      if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+    };
+  }, [filePreviewUrl]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleFileChange = (e) => {
+    const selected = e.target.files[0] || null;
+    setFileError(null);
+
+    if (!selected) {
+      setFile(null);
+      setFilePreviewUrl(null);
+      return;
+    }
+
+    if (selected.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      setFileError(`File must be smaller than ${MAX_FILE_SIZE_MB}MB.`);
+      setFile(null);
+      setFilePreviewUrl(null);
+      e.target.value = '';
+      return;
+    }
+
+    setFile(selected);
+    setFilePreviewUrl(URL.createObjectURL(selected));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (fileError) return;
+
     setSubmitting(true);
     setError(null);
 
     try {
-    
-     const payload = {
-        ...formData,
+      const payload = {
+        productName: formData.productName,
+        productDescription: formData.productDescription,
         productPrice: Number(formData.productPrice),
         productQuantity: Number(formData.productQuantity),
-        userId: Number(formData.userId),
+        image: file || undefined,
       };
 
       const response = await createProduct(payload);
@@ -39,8 +77,9 @@ function ProductForm({ onProductCreated }) {
         productDescription: '',
         productPrice: '',
         productQuantity: '',
-        userId: '',
       });
+      setFile(null);
+      setFilePreviewUrl(null);
     } catch (err) {
       setError('Could not create product. Check your input.');
       console.error(err);
@@ -63,7 +102,7 @@ function ProductForm({ onProductCreated }) {
         </label>
         <input
           type="text"
-          name="productName" 
+          name="productName"
           value={formData.productName}
           onChange={handleChange}
           required
@@ -112,23 +151,30 @@ function ProductForm({ onProductCreated }) {
         </div>
       </div>
 
-      {/* <div className="mb-6">
+      <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          User ID
+          Product File (image, PDF, DOC or DOCX)
         </label>
         <input
-          type="number"
-          name="userId"
-          value={formData.userId}
-          onChange={handleChange}
-          required
-          className="border border-gray-300 p-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+          type="file"
+          accept={ACCEPTED_FILE_TYPES}
+          onChange={handleFileChange}
+          className="border border-gray-300 p-2 rounded-md w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-      </div> */}
+        {fileError && (
+          <p className="text-xs text-red-600 mt-1">{fileError}</p>
+        )}
+        {filePreviewUrl && (
+          <div className="mt-3">
+            <FileThumbnail url={filePreviewUrl} name={file.name} sizeClass="h-28 w-28" clickable={false} />
+            <p className="text-[11px] text-gray-500 mt-1">{file.name}</p>
+          </div>
+        )}
+      </div>
 
       <button
         type="submit"
-        disabled={submitting}
+        disabled={submitting || !!fileError}
         className="bg-blue-600 text-white font-medium px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 w-full"
       >
         {submitting ? 'Adding...' : 'Add Product'}

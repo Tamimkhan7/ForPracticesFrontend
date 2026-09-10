@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getProducts, updateProduct } from '../api/productApi';
+import { getProductById, updateProduct } from '../api/productApi';
+import FileThumbnail from '../components/FileThumbnail';
+import { resolveFileUrl, getFileNameFromUrl, ACCEPTED_FILE_TYPES } from '../utils/fileHelpers';
+
+const MAX_FILE_SIZE_MB = 5;
 
 function EditProductPage() {
   const { id } = useParams();
@@ -12,19 +16,18 @@ function EditProductPage() {
     productPrice: '',
     productQuantity: '',
   });
+  const [existingFileUrl, setExistingFileUrl] = useState(null);
+  const [file, setFile] = useState(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState(null);
+  const [fileError, setFileError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const response = await getProducts();
-        const product = response.data.find((p) => p.id === Number(id));      
-
-        if (!product) {
-          setError('Product not found.');
-          return;
-        }
+        const response = await getProductById(id);
+        const product = response.data;
 
         setFormData({
           productName: product.productName,
@@ -32,6 +35,7 @@ function EditProductPage() {
           productPrice: product.productPrice,
           productQuantity: product.productQuantity,
         });
+        setExistingFileUrl(product.imageUrl || null);
       } catch (err) {
         setError('Could not load product.');
         console.error(err);
@@ -43,19 +47,52 @@ function EditProductPage() {
     fetchProduct();
   }, [id]);
 
+  // Avoid leaking object URLs created for local previews
+  useEffect(() => {
+    return () => {
+      if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+    };
+  }, [filePreviewUrl]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleFileChange = (e) => {
+    const selected = e.target.files[0] || null;
+    setFileError(null);
+
+    if (!selected) {
+      setFile(null);
+      setFilePreviewUrl(null);
+      return;
+    }
+
+    if (selected.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      setFileError(`File must be smaller than ${MAX_FILE_SIZE_MB}MB.`);
+      setFile(null);
+      setFilePreviewUrl(null);
+      e.target.value = '';
+      return;
+    }
+
+    setFile(selected);
+    setFilePreviewUrl(URL.createObjectURL(selected));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (fileError) return;
+
     try {
       const payload = {
-        ...formData,
+        productName: formData.productName,
+        productDescription: formData.productDescription,
         productPrice: Number(formData.productPrice),
         productQuantity: Number(formData.productQuantity),
+        image: file || undefined,
       };
 
       await updateProduct(id, payload);
@@ -69,6 +106,8 @@ function EditProductPage() {
   if (loading) {
     return <div className="p-6 text-gray-500">Loading product...</div>;
   }
+
+  const resolvedExistingUrl = resolveFileUrl(existingFileUrl);
 
   return (
     <div className="max-w-3xl mx-auto p-6">
@@ -118,7 +157,7 @@ function EditProductPage() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Price (৳)
@@ -146,9 +185,44 @@ function EditProductPage() {
           </div>
         </div>
 
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Product File (image, PDF, DOC or DOCX)
+          </label>
+
+          {resolvedExistingUrl && !filePreviewUrl && (
+            <div className="mb-2">
+              <FileThumbnail
+                url={resolvedExistingUrl}
+                name={getFileNameFromUrl(existingFileUrl)}
+                sizeClass="h-28 w-28"
+              />
+              <p className="text-[11px] text-gray-400 mt-1">Current file — click to open / download</p>
+            </div>
+          )}
+
+          <input
+            type="file"
+            accept={ACCEPTED_FILE_TYPES}
+            onChange={handleFileChange}
+            className="border border-gray-300 p-2 rounded-md w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {fileError && (
+            <p className="text-xs text-red-600 mt-1">{fileError}</p>
+          )}
+          {filePreviewUrl && (
+            <div className="mt-3">
+              <FileThumbnail url={filePreviewUrl} name={file.name} sizeClass="h-28 w-28" clickable={false} />
+              <p className="text-[11px] text-gray-500 mt-1">New file: {file.name}</p>
+            </div>
+          )}
+          <p className="text-xs text-gray-400 mt-1">Leave empty to keep the current file.</p>
+        </div>
+
         <button
           type="submit"
-          className="bg-blue-600 text-white font-medium px-4 py-2 rounded-md hover:bg-blue-700 w-full"
+          disabled={!!fileError}
+          className="bg-blue-600 text-white font-medium px-4 py-2 rounded-md hover:bg-blue-700 w-full disabled:opacity-50"
         >
           Save Changes
         </button>

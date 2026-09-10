@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProducts, deleteProduct } from '../api/productApi';
+import FileThumbnail from '../components/FileThumbnail';
+import { resolveFileUrl } from '../utils/fileHelpers';
 
 function ProductListPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [brokenImages, setBrokenImages] = useState(() => new Set());
   const navigate = useNavigate();
 
   const [pageNumber, setPageNumber] = useState(1);
@@ -26,7 +29,7 @@ function ProductListPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchValue);
-      setPageNumber(1); 
+      setPageNumber(1);
     }, 400);
 
     return () => clearTimeout(timer);
@@ -45,7 +48,7 @@ function ProductListPage() {
       setPriceError("");
       setDebouncedMin(minValue);
       setDebouncedMax(maxValue);
-      setPageNumber(1); 
+      setPageNumber(1);
     }, 400);
 
     return () => clearTimeout(timer);
@@ -68,6 +71,7 @@ function ProductListPage() {
         setProducts(data.items ?? []);
         setTotalPages(data.totalPages ?? 1);
         setTotalCount(data.totalCount ?? 0);
+        setBrokenImages(new Set());
       } catch (err) {
         setError('Could not load products. Is the backend running?');
         console.error(err);
@@ -115,6 +119,14 @@ function ProductListPage() {
   const handleClearPriceFilter = () => {
     setMinValue("");
     setMaxValue("");
+  };
+
+  const markImageBroken = (id) => {
+    setBrokenImages((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
   };
 
   return (
@@ -222,41 +234,60 @@ function ProductListPage() {
       {!loading && !error && products.length > 0 && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {products.map((product) => (
-              <div
-                key={product.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col"
-              >
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {product.productName}
-                </h2>
-                <p className="text-gray-500 text-sm mt-1 mb-3 flex-grow">
-                  {product.productDescription}
-                </p>
+            {products.map((product) => {
+              const resolvedUrl = resolveFileUrl(product.imageUrl);
+              const showFile = resolvedUrl && !brokenImages.has(product.id);
 
-                <div className="flex justify-between text-sm mb-4">
-                  <span className="font-medium text-gray-900">
-                    ৳{product.productPrice}
-                  </span>
-                  <span className="text-gray-500">Qty: {product.productQuantity}</span>
-                </div>
+              return (
+                <div
+                  key={product.id}
+                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col"
+                >
+                  {showFile ? (
+                    <FileThumbnail
+                      url={resolvedUrl}
+                      name={product.productName}
+                      sizeClass="h-36 w-full"
+                      className="mb-3"
+                      onImageError={() => markImageBroken(product.id)}
+                    />
+                  ) : (
+                    <div className="w-full h-36 rounded-md mb-3 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
+                      No file
+                    </div>
+                  )}
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => navigate(`/edit-product/${product.id}`)}
-                    className="flex-1 text-sm font-medium bg-gray-100 text-gray-700 px-3 py-1.5 rounded-md hover:bg-gray-200"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(product.id)}
-                    className="flex-1 text-sm font-medium bg-red-50 text-red-600 px-3 py-1.5 rounded-md hover:bg-red-100"
-                  >
-                    Delete
-                  </button>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {product.productName}
+                  </h2>
+                  <p className="text-gray-500 text-sm mt-1 mb-3 flex-grow">
+                    {product.productDescription}
+                  </p>
+
+                  <div className="flex justify-between text-sm mb-4">
+                    <span className="font-medium text-gray-900">
+                      ৳{product.productPrice}
+                    </span>
+                    <span className="text-gray-500">Qty: {product.productQuantity}</span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => navigate(`/edit-product/${product.id}`)}
+                      className="flex-1 text-sm font-medium bg-gray-100 text-gray-700 px-3 py-1.5 rounded-md hover:bg-gray-200"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(product.id)}
+                      className="flex-1 text-sm font-medium bg-red-50 text-red-600 px-3 py-1.5 rounded-md hover:bg-red-100"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="flex justify-center items-center gap-4 mt-8">
