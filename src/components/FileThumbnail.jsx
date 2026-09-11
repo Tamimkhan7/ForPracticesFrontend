@@ -1,4 +1,3 @@
-// src/components/FileThumbnail.jsx
 import { isImageExtension, getFileExtension, getFileNameFromUrl } from '../utils/fileHelpers';
 
 const EXTENSION_STYLES = {
@@ -7,15 +6,7 @@ const EXTENSION_STYLES = {
   docx: 'bg-blue-50 text-blue-600',
 };
 
-/**
- * Shows an image preview for image files, or a labeled file-type card
- * (PDF / DOC / DOCX) for everything else.
- *
- * - When `clickable` (default true) and `url` is a real (non-blob) file URL,
- *   it's wrapped in a link that opens the file in a new tab — the browser
- *   will preview images/PDFs inline or download DOC/DOCX automatically.
- * - Pass `clickable={false}` for local, not-yet-uploaded file previews.
- */
+
 function FileThumbnail({ url, name, sizeClass = 'h-28 w-28', className = '', onImageError, clickable = true }) {
   if (!url) return null;
 

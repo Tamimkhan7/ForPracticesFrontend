@@ -47,7 +47,6 @@ function EditProductPage() {
     fetchProduct();
   }, [id]);
 
-  // Avoid leaking object URLs created for local previews
   useEffect(() => {
     return () => {
       if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
