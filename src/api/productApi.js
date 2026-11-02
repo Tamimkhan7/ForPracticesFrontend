@@ -15,7 +15,7 @@ const toFormData = (data) => {
     }
   });
   return formData;
-};
+}; 
 
 export const createProduct = (data) =>  axiosInstance.post('/Product', toFormData(data), {
     headers: { 'Content-Type': undefined },

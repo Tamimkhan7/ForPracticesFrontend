@@ -18,7 +18,6 @@ function ProductForm({ onProductCreated }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  // Avoid leaking object URLs created for local previews
   useEffect(() => {
     return () => {
       if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
