@@ -6,7 +6,7 @@ server {
     index index.html;
 
     # product uploads can be big
-    client_max_body_ize 50m;
+   client_max_body_size 50m;
 
     # Docker's built-in DNS (works on a user-defined network like appnet)
     resolver 127.0.0.11 valid=10s ipv6=off;
